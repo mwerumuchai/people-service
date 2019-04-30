@@ -1,10 +1,10 @@
 def project = 'people-service'
 def appName = 'people-service'
-def tenancy='ccoekenya'
+def tenancy='muchai'
 def ocir='fra.ocir.io'
 def imageTag = "${ocir}/${tenancy}/oracleimc/${appName}:${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
 
-pipeline { 
+pipeline {
 	  agent {
     kubernetes {
       label 'people-service-app-build'
@@ -25,7 +25,7 @@ spec:
     - cat
     tty: true
   - name: gradle
-    image: gradle:5.3.1-jdk8    
+    image: gradle:5.3.1-jdk8
     command:
     - cat
     tty: true
@@ -55,44 +55,44 @@ spec:
         pollSCM ('* * * * *')
     }
 	stages {
-		stage('Build Application'){			
-			steps {		
-				container('gradle') {		
-		    		sh 'gradle clean build'	
-	    		}	
-				
-			}			
-		}	
-		stage('Build Image and push'){			
-			steps {		
-				container('docker') {		
+		stage('Build Application'){
+			steps {
+				container('gradle') {
+		    		sh 'gradle clean build'
+	    		}
+
+			}
+		}
+		stage('Build Image and push'){
+			steps {
+				container('docker') {
 		    		withDockerRegistry(credentialsId: 'ocir-credentials', url: "https://${ocir}") {
-					      sh """				           
+					      sh """
 				            docker build -t ${imageTag} .
 				            docker push ${imageTag}
 				            """
-					}	
-	    		}	
-				
-			}			
+					}
+	    		}
+
+			}
 		}
 		stage('Deploy To Kubernetes'){
-			environment { 
-        KUBECONFIG = credentials('oci-kubernetes') 
+			environment {
+        KUBECONFIG = credentials('oci-kubernetes')
       }
-     
-			steps {		
-				container('kubectl') {		
-		    		sh 'kubectl get pods'	
+
+			steps {
+				container('kubectl') {
+		    		sh 'kubectl get pods'
 		    		sh("sed -i.bak 's#iad.ocir.io/gse00013828/oracleimc/people-rest-service:1.0#${imageTag}#' ./k8s/deployments/people-service-deployment.yaml")
 		    		sh("kubectl apply -f ./k8s/deployments/people-service-deployment.yaml")
 		    		sh("kubectl apply -f ./k8s/services/people-service.yaml")
 		    		sh("kubectl apply -f ./k8s/services/ingress.yaml")
-		    		sh("echo `kubectl get svc -o jsonpath='{.items[*].status.loadBalancer.ingress[*].ip}' --all-namespaces`")            
-	    		}	
-				
-			}			
-		}		
-		
+		    		sh("echo `kubectl get svc -o jsonpath='{.items[*].status.loadBalancer.ingress[*].ip}' --all-namespaces`")
+	    		}
+
+			}
+		}
+
 	}
 }
